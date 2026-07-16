@@ -41,9 +41,13 @@ const queryClient = new QueryClient({
   queryCache,
   defaultOptions: {
     queries: {
-      retry: (failureCount, error: any) => {
+      retry: (failureCount, error: unknown) => {
+        const supabaseError = error as { code?: string; message?: string };
         // Don't retry on Supabase errors
-        if (error?.code === 'PGRST' || error?.message?.includes('supabase')) {
+        if (
+          supabaseError?.code === "PGRST" ||
+          supabaseError?.message?.includes("supabase")
+        ) {
           return false;
         }
         return failureCount < 3;
@@ -53,7 +57,7 @@ const queryClient = new QueryClient({
       gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
       refetchOnWindowFocus: false, // Don't refetch when window regains focus
       refetchOnReconnect: false, // Don't refetch on reconnect
-      refetchOnMount: 'stale', // Only refetch if data is stale
+      refetchOnMount: "stale", // Only refetch if data is stale
     },
   },
 });
@@ -61,8 +65,11 @@ const queryClient = new QueryClient({
 const AppContent = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const location = useLocation();
-  
-  const isAdminRoute = location.pathname === '/admin' || location.pathname === '/auth' || location.pathname.match(/^\/(?!$|projects$).*/);
+
+  const isAdminRoute =
+    location.pathname === "/admin" ||
+    location.pathname === "/auth" ||
+    location.pathname.match(/^\/(?!$|projects$).*/);
 
   return (
     <SidebarProvider defaultOpen={false}>
@@ -82,14 +89,23 @@ const AppContent = () => {
           )}
           <Routes>
             <Route path="/" element={<Index isChatOpen={isChatOpen} />} />
-            <Route path="/projects" element={<ProjectsPage isChatOpen={isChatOpen} />} />
+            <Route
+              path="/projects"
+              element={<ProjectsPage isChatOpen={isChatOpen} />}
+            />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/admin" element={
-              <ProtectedRoute>
-                <Admin />
-              </ProtectedRoute>
-            } />
-            <Route path="/service-unavailable" element={<ServiceUnavailable />} />
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute>
+                  <Admin />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/service-unavailable"
+              element={<ServiceUnavailable />}
+            />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

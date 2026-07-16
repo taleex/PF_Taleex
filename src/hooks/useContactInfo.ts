@@ -1,40 +1,61 @@
-import { useQuery } from '@tanstack/react-query';
-import { contactInfo, socialLinks } from '@/data/contact';
-import * as LucideIcons from 'lucide-react';
-import { CLOUD_ENABLED } from '@/config/cloud';
+import { useQuery } from "@tanstack/react-query";
+import { contactInfo, socialLinks } from "@/data/contact";
+import * as LucideIcons from "lucide-react";
+import { CLOUD_ENABLED } from "@/config/cloud";
+import type { Database } from "@/integrations/supabase/types";
+import type { IconType } from "react-icons";
+
+interface ContactInfoRow {
+  label: string;
+  value: string;
+  type: string | null;
+  link: string | null;
+  icon_name: string | null;
+}
 
 export const useContactInfo = () => {
   return useQuery({
-    queryKey: ['contact-info'],
+    queryKey: ["contact-info"],
     queryFn: async () => {
       if (!CLOUD_ENABLED) return { socialLinks, contactInfo };
-      const { supabase } = await import('@/integrations/supabase/client');
-      const sb: any = supabase;
-      const { data, error } = await sb
-        .from('contact_info')
-        .select('*')
-        .order('order_index');
+
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data, error } = await supabase
+        .from("contact_info")
+        .select("*")
+        .order("order_index");
       if (error) throw error;
 
-      // Separate social links and contact info
-      const social = (data || []).filter((item: any) => item.type === 'social').map((item: any) => ({
-        icon: (LucideIcons as any)[item.icon_name] || LucideIcons.Mail,
-        href: item.link || item.value,
-        label: item.label
-      }));
+      const rows = (data ||
+        []) as Database["public"]["Tables"]["contact_info"]["Row"][];
 
-      const info = (data || []).filter((item: any) => item.type === 'contact').reduce((acc: Record<string, string>, item: any) => {
-        acc[String(item.label).toLowerCase()] = item.value;
-        return acc;
-      }, {} as Record<string, string>);
+      const social = rows
+        .filter((item): item is ContactInfoRow => item.type === "social")
+        .map((item) => ({
+          icon:
+            (LucideIcons as Record<string, IconType>)[item.icon_name || ""] ||
+            LucideIcons.Mail,
+          href: item.link || item.value,
+          label: item.label,
+        }));
+
+      const info = rows
+        .filter((item): item is ContactInfoRow => item.type === "contact")
+        .reduce((acc: Record<string, string>, item) => {
+          acc[String(item.label).toLowerCase()] = item.value;
+          return acc;
+        }, {});
 
       return {
         socialLinks: social.length > 0 ? social : socialLinks,
-        contactInfo: Object.keys(info).length > 0 ? {
-          email: info.email || contactInfo.email,
-          phone: info.phone || contactInfo.phone,
-          location: info.location || contactInfo.location
-        } : contactInfo
+        contactInfo:
+          Object.keys(info).length > 0
+            ? {
+                email: info.email || contactInfo.email,
+                phone: info.phone || contactInfo.phone,
+                location: info.location || contactInfo.location,
+              }
+            : contactInfo,
       };
     },
     placeholderData: { socialLinks, contactInfo },

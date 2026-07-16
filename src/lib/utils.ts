@@ -1,17 +1,17 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 
 /**
  * Throttle function - ensures function is called at most once every `delay` milliseconds
  * Useful for frequent events like scroll, resize
  */
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => unknown>(
   fn: T,
-  delay: number
+  delay: number,
 ): (...args: Parameters<T>) => void {
   let lastCall = 0;
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -39,9 +39,9 @@ export function throttle<T extends (...args: any[]) => any>(
  * Debounce function - delays function execution until after `delay` milliseconds
  * Useful for search inputs, resize handlers
  */
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   fn: T,
-  delay: number
+  delay: number,
 ): (...args: Parameters<T>) => void {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
 

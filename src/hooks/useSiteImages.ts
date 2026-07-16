@@ -1,5 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
-import { CLOUD_ENABLED } from '@/config/cloud';
+import { useQuery } from "@tanstack/react-query";
+import { CLOUD_ENABLED } from "@/config/cloud";
+import type { Database } from "@/integrations/supabase/types";
 
 export interface SiteImage {
   image_key: string;
@@ -9,17 +10,17 @@ export interface SiteImage {
 }
 
 export const useSiteImages = () => {
-  return useQuery({
-    queryKey: ['site-images'],
+  return useQuery<SiteImage[]>({
+    queryKey: ["site-images"],
     queryFn: async () => {
       if (!CLOUD_ENABLED) return [];
-      const { supabase } = await import('@/integrations/supabase/client');
-      const sb: any = supabase;
-      const { data, error } = await sb
-        .from('site_images')
-        .select('*');
+
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data, error } = await supabase.from("site_images").select("*");
       if (error) throw error;
-      return (data || []) as SiteImage[];
+
+      return (data ||
+        []) as Database["public"]["Tables"]["site_images"]["Row"][];
     },
     retry: 1,
     staleTime: 5 * 60 * 1000,
@@ -27,19 +28,20 @@ export const useSiteImages = () => {
 };
 
 export const useSiteImage = (imageKey: string) => {
-  return useQuery({
-    queryKey: ['site-image', imageKey],
+  return useQuery<SiteImage | null>({
+    queryKey: ["site-image", imageKey],
     queryFn: async () => {
       if (!CLOUD_ENABLED) return null;
-      const { supabase } = await import('@/integrations/supabase/client');
-      const sb: any = supabase;
-      const { data, error } = await sb
-        .from('site_images')
-        .select('*')
-        .eq('image_key', imageKey)
+
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data, error } = await supabase
+        .from("site_images")
+        .select("*")
+        .eq("image_key", imageKey)
         .maybeSingle();
       if (error) throw error;
-      return data as SiteImage | null;
+
+      return data as Database["public"]["Tables"]["site_images"]["Row"] | null;
     },
     retry: 1,
     staleTime: 5 * 60 * 1000,

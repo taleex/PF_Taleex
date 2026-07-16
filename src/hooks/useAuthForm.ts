@@ -1,22 +1,25 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { loginSchema, LoginFormData } from '@/lib/auth-validation';
-import { useRateLimit } from '@/hooks/useRateLimit';
+import { useState, useEffect, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
+import { ZodError } from "zod";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { loginSchema, LoginFormData } from "@/lib/auth-validation";
+import { useRateLimit } from "@/hooks/useRateLimit";
 
-const REMEMBERED_EMAIL_KEY = 'rememberedEmail';
-const LOGIN_RATE_LIMIT_KEY = 'loginAttempts';
+const REMEMBERED_EMAIL_KEY = "rememberedEmail";
+const LOGIN_RATE_LIMIT_KEY = "loginAttempts";
 
 export const useAuthForm = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<Partial<Record<keyof LoginFormData, string>>>({});
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof LoginFormData, string>>
+  >({});
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   // Rate limiting: 5 attempts per 15 minutes
   const rateLimit = useRateLimit(LOGIN_RATE_LIMIT_KEY, {
     maxAttempts: 5,
@@ -36,9 +39,11 @@ export const useAuthForm = () => {
   // Check if user is already logged in
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (session) {
-        navigate('/admin');
+        navigate("/admin");
       }
     };
     checkUser();
@@ -49,40 +54,45 @@ export const useAuthForm = () => {
       loginSchema.parse({ email, password });
       setErrors({});
       return true;
-    } catch (error: any) {
+    } catch (error) {
       const formErrors: Partial<Record<keyof LoginFormData, string>> = {};
-      error.errors?.forEach((err: any) => {
-        if (err.path) {
-          formErrors[err.path[0] as keyof LoginFormData] = err.message;
-        }
-      });
+
+      if (error instanceof ZodError) {
+        error.errors.forEach((err) => {
+          if (err.path && err.path.length > 0) {
+            formErrors[err.path[0] as keyof LoginFormData] = err.message;
+          }
+        });
+      }
+
       setErrors(formErrors);
       return false;
     }
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+
     // Check rate limit
     if (rateLimit.isLocked) {
-      const remainingMsg = rateLimit.remainingMinutes > 0 
-        ? `Try again in ${rateLimit.remainingMinutes} minute${rateLimit.remainingMinutes !== 1 ? 's' : ''}`
-        : 'Please try again shortly';
+      const remainingMsg =
+        rateLimit.remainingMinutes > 0
+          ? `Try again in ${rateLimit.remainingMinutes} minute${rateLimit.remainingMinutes !== 1 ? "s" : ""}`
+          : "Please try again shortly";
       toast({
-        title: 'Too many login attempts',
+        title: "Too many login attempts",
         description: `For your security, further login attempts are temporarily disabled. ${remainingMsg}.`,
-        variant: 'destructive',
+        variant: "destructive",
       });
       return;
     }
-    
+
     if (!validateForm()) {
       rateLimit.recordAttempt();
       toast({
-        title: 'Validation Error',
-        description: 'Please check your input and try again',
-        variant: 'destructive',
+        title: "Validation Error",
+        description: "Please check your input and try again",
+        variant: "destructive",
       });
       return;
     }
@@ -100,9 +110,9 @@ export const useAuthForm = () => {
 
       if (error) {
         toast({
-          title: 'Login failed',
+          title: "Login failed",
           description: error.message,
-          variant: 'destructive',
+          variant: "destructive",
         });
       } else {
         // Handle remember me
@@ -111,22 +121,22 @@ export const useAuthForm = () => {
         } else {
           localStorage.removeItem(REMEMBERED_EMAIL_KEY);
         }
-        
+
         // Reset rate limit on successful login
         rateLimit.reset();
-        
+
         toast({
-          title: 'Success',
-          description: 'Logged in successfully',
+          title: "Success",
+          description: "Logged in successfully",
         });
-        navigate('/admin');
+        navigate("/admin");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       rateLimit.recordAttempt();
       toast({
-        title: 'Error',
-        description: 'An unexpected error occurred',
-        variant: 'destructive',
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);

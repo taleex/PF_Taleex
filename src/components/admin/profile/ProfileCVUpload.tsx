@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { getErrorMessage } from "@/lib/error-utils";
+import { Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ProfileCVUploadProps {
   profileId: string;
@@ -11,38 +12,42 @@ interface ProfileCVUploadProps {
   onUploadSuccess: (url: string) => void;
 }
 
-export const ProfileCVUpload = ({ profileId, cvUrl, onUploadSuccess }: ProfileCVUploadProps) => {
+export const ProfileCVUpload = ({
+  profileId,
+  cvUrl,
+  onUploadSuccess,
+}: ProfileCVUploadProps) => {
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
 
   const handleUploadCV = async (file: File) => {
     setUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split(".").pop();
       const fileName = `cv-${profileId}.${fileExt}`;
       const filePath = `${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('documents')
+        .from("documents")
         .upload(filePath, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('documents')
-        .getPublicUrl(filePath);
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("documents").getPublicUrl(filePath);
 
       onUploadSuccess(publicUrl);
 
       toast({
-        title: 'Success',
-        description: 'CV uploaded successfully',
+        title: "Success",
+        description: "CV uploaded successfully",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
+        title: "Error",
+        description: getErrorMessage(error),
+        variant: "destructive",
       });
     } finally {
       setUploading(false);
@@ -51,7 +56,9 @@ export const ProfileCVUpload = ({ profileId, cvUrl, onUploadSuccess }: ProfileCV
 
   return (
     <div className="space-y-2">
-      <Label htmlFor="cv_upload" className="text-[#0A0908]">CV / Resume</Label>
+      <Label htmlFor="cv_upload" className="text-[#0A0908]">
+        CV / Resume
+      </Label>
       <div className="flex items-center gap-2">
         <Input
           id="cv_upload"
@@ -68,7 +75,15 @@ export const ProfileCVUpload = ({ profileId, cvUrl, onUploadSuccess }: ProfileCV
       </div>
       {cvUrl && (
         <p className="text-sm text-gray-600">
-          Current CV: <a href={cvUrl} target="_blank" rel="noopener noreferrer" className="text-[#FF6542] hover:underline">View</a>
+          Current CV:{" "}
+          <a
+            href={cvUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[#FF6542] hover:underline"
+          >
+            View
+          </a>
         </p>
       )}
     </div>

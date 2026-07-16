@@ -1,13 +1,33 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#FF6542" />
-    
+    <script>
+      (function () {
+        var cookieName = "taleex_theme=";
+        var themeCookie = document.cookie.split("; ").find(function (entry) {
+          return entry.indexOf(cookieName) === 0;
+        });
+        var theme = themeCookie
+          ? themeCookie.substring(cookieName.length)
+          : null;
+        if (theme !== "dark" && theme !== "light") {
+          theme = window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light";
+        }
+        document.documentElement.classList.add(theme);
+        document.documentElement.classList.remove(
+          theme === "dark" ? "light" : "dark",
+        );
+      })();
+    </script>
     <!-- Security Headers -->
-    <meta http-equiv="Content-Security-Policy" content="
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="
       default-src 'self';
       script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com;
@@ -19,19 +39,31 @@
       form-action 'self';
       frame-ancestors 'none';
       upgrade-insecure-requests;
-    " />
+    "
+    />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <meta http-equiv="X-Frame-Options" content="SAMEORIGIN" />
-    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
-    <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()" />
-    <meta http-equiv="Strict-Transport-Security" content="max-age=31536000; includeSubDomains; preload" />
-    
+    <meta
+      http-equiv="Referrer-Policy"
+      content="strict-origin-when-cross-origin"
+    />
+    <meta
+      http-equiv="Permissions-Policy"
+      content="geolocation=(), microphone=(), camera=()"
+    />
+    <meta
+      http-equiv="Strict-Transport-Security"
+      content="max-age=31536000; includeSubDomains; preload"
+    />
+
     <title>Taleex - Portfolio</title>
     <meta name="description" content="Professional web developer portfolio." />
     <meta name="author" content="Taleex" />
-    <meta name="keywords" content="web developer, react developer, full-stack developer, portfolio, javascript, typescript" />
-
+    <meta
+      name="keywords"
+      content="web developer, react developer, full-stack developer, portfolio, javascript, typescript"
+    />
 
     <!-- Preconnect to external domains -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -41,12 +73,15 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    
+
     <!-- HTTPS Enforcement Fallback -->
     <script>
       // Fallback HTTPS redirect for environments without server-side redirects
-      if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost') {
-        window.location.href = window.location.href.replace('http:', 'https:');
+      if (
+        window.location.protocol === "http:" &&
+        window.location.hostname !== "localhost"
+      ) {
+        window.location.href = window.location.href.replace("http:", "https:");
       }
     </script>
   </body>
