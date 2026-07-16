@@ -114,10 +114,10 @@ const MessagesViewer = () => {
         title: "Success",
         description: "Contact submission deleted successfully",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message,
+        description: getErrorMessage(error),
         variant: "destructive",
       });
     }
@@ -137,10 +137,10 @@ const MessagesViewer = () => {
         title: "Success",
         description: "Feedback deleted successfully",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message,
+        description: getErrorMessage(error),
         variant: "destructive",
       });
     }

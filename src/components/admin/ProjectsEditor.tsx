@@ -1,29 +1,38 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2, Plus, Trash2, Save, X, GripVertical, Upload } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
-import { useSkills } from '@/hooks/useSkills';
-import { Badge } from '@/components/ui/badge';
+import { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { getErrorMessage } from "@/lib/error-utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Loader2,
+  Plus,
+  Trash2,
+  Save,
+  X,
+  GripVertical,
+  Upload,
+} from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { useSkills } from "@/hooks/useSkills";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   DndContext,
   closestCenter,
@@ -32,15 +41,15 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
-} from '@dnd-kit/core';
+} from "@dnd-kit/core";
 import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface Project {
   id: string;
@@ -52,36 +61,60 @@ interface Project {
   demo_url: string | null;
   featured: boolean;
   order_index: number;
-  category: 'Personal' | 'Professional' | 'Open Source';
+  category: "Personal" | "Professional" | "Open Source";
 }
 
-function SortableProjectCard({ project, editingProject, onEdit, onDelete, onSave, setEditingProject, skillCategories }: any) {
+interface SkillCategory {
+  id: string;
+  title: string;
+  skills: {
+    id: string;
+    name: string;
+  }[];
+}
+
+interface SortableProjectCardProps {
+  project: Project;
+  editingProject: Project | null;
+  onEdit: (project: Project) => void;
+  onDelete: (id: string) => void;
+  onSave: (project: Project) => void;
+  setEditingProject: (project: Project | null) => void;
+  skillCategories?: SkillCategory[];
+}
+
+function SortableProjectCard({
+  project,
+  editingProject,
+  onEdit,
+  onDelete,
+  onSave,
+  setEditingProject,
+  skillCategories,
+}: SortableProjectCardProps) {
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
-  
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({ id: project.id });
+
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id: project.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
   };
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     // Validate file type
-    if (!file.type.startsWith('image/')) {
+    if (!file.type.startsWith("image/")) {
       toast({
-        title: 'Error',
-        description: 'Please upload an image file',
-        variant: 'destructive',
+        title: "Error",
+        description: "Please upload an image file",
+        variant: "destructive",
       });
       return;
     }
@@ -89,40 +122,40 @@ function SortableProjectCard({ project, editingProject, onEdit, onDelete, onSave
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast({
-        title: 'Error',
-        description: 'Image size should be less than 5MB',
-        variant: 'destructive',
+        title: "Error",
+        description: "Image size should be less than 5MB",
+        variant: "destructive",
       });
       return;
     }
 
     setUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split(".").pop();
       const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('project-images')
+        .from("project-images")
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('project-images')
-        .getPublicUrl(filePath);
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("project-images").getPublicUrl(filePath);
 
       setEditingProject({ ...editingProject, image_url: publicUrl });
-      
+
       toast({
-        title: 'Success',
-        description: 'Image uploaded successfully',
+        title: "Success",
+        description: "Image uploaded successfully",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
+        title: "Error",
+        description: getErrorMessage(error),
+        variant: "destructive",
       });
     } finally {
       setUploading(false);
@@ -134,10 +167,16 @@ function SortableProjectCard({ project, editingProject, onEdit, onDelete, onSave
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
+            <div
+              {...attributes}
+              {...listeners}
+              className="cursor-grab active:cursor-grabbing"
+            >
               <GripVertical className="h-5 w-5 text-gray-400" />
             </div>
-            <CardTitle className="text-lg text-[#0A0908]">{project.title}</CardTitle>
+            <CardTitle className="text-lg text-[#0A0908]">
+              {project.title}
+            </CardTitle>
           </div>
           <div className="flex gap-2">
             <Button
@@ -146,7 +185,7 @@ function SortableProjectCard({ project, editingProject, onEdit, onDelete, onSave
               onClick={() => onEdit(project)}
               className="border-gray-300 bg-white hover:bg-gray-100 text-[#0A0908] hover:text-[#0A0908]"
             >
-              {editingProject?.id === project.id ? 'Cancel' : 'Edit'}
+              {editingProject?.id === project.id ? "Cancel" : "Edit"}
             </Button>
             <Button
               variant="destructive"
@@ -165,7 +204,12 @@ function SortableProjectCard({ project, editingProject, onEdit, onDelete, onSave
               <Label className="text-[#0A0908]">Title</Label>
               <Input
                 value={editingProject.title}
-                onChange={(e) => setEditingProject({ ...editingProject, title: e.target.value })}
+                onChange={(e) =>
+                  setEditingProject({
+                    ...editingProject,
+                    title: e.target.value,
+                  })
+                }
                 className="bg-white border-gray-300 text-[#0A0908]"
               />
             </div>
@@ -174,7 +218,12 @@ function SortableProjectCard({ project, editingProject, onEdit, onDelete, onSave
               <Input
                 type="number"
                 value={editingProject.order_index}
-                onChange={(e) => setEditingProject({ ...editingProject, order_index: parseInt(e.target.value) })}
+                onChange={(e) =>
+                  setEditingProject({
+                    ...editingProject,
+                    order_index: parseInt(e.target.value),
+                  })
+                }
                 className="bg-white border-gray-300 text-[#0A0908]"
               />
             </div>
@@ -183,7 +232,15 @@ function SortableProjectCard({ project, editingProject, onEdit, onDelete, onSave
             <Label className="text-[#0A0908]">Category</Label>
             <Select
               value={editingProject.category}
-              onValueChange={(value) => setEditingProject({ ...editingProject, category: value as 'Personal' | 'Professional' | 'Open Source' })}
+              onValueChange={(value) =>
+                setEditingProject({
+                  ...editingProject,
+                  category: value as
+                    | "Personal"
+                    | "Professional"
+                    | "Open Source",
+                })
+              }
             >
               <SelectTrigger className="bg-white border-gray-300 text-[#0A0908]">
                 <SelectValue placeholder="Select category" />
@@ -199,7 +256,12 @@ function SortableProjectCard({ project, editingProject, onEdit, onDelete, onSave
             <Label className="text-[#0A0908]">Description</Label>
             <Textarea
               value={editingProject.description}
-              onChange={(e) => setEditingProject({ ...editingProject, description: e.target.value })}
+              onChange={(e) =>
+                setEditingProject({
+                  ...editingProject,
+                  description: e.target.value,
+                })
+              }
               className="bg-white border-gray-300 text-[#0A0908]"
             />
           </div>
@@ -208,9 +270,9 @@ function SortableProjectCard({ project, editingProject, onEdit, onDelete, onSave
             <div className="flex gap-4 items-start">
               {editingProject.image_url && (
                 <div className="relative w-32 h-32 rounded-lg overflow-hidden border-2 border-gray-200">
-                  <img 
-                    src={editingProject.image_url} 
-                    alt="Project preview" 
+                  <img
+                    src={editingProject.image_url}
+                    alt="Project preview"
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -239,16 +301,26 @@ function SortableProjectCard({ project, editingProject, onEdit, onDelete, onSave
             <div className="space-y-2">
               <Label className="text-[#0A0908]">GitHub URL</Label>
               <Input
-                value={editingProject.github_url || ''}
-                onChange={(e) => setEditingProject({ ...editingProject, github_url: e.target.value })}
+                value={editingProject.github_url || ""}
+                onChange={(e) =>
+                  setEditingProject({
+                    ...editingProject,
+                    github_url: e.target.value,
+                  })
+                }
                 className="bg-white border-gray-300 text-[#0A0908]"
               />
             </div>
             <div className="space-y-2">
               <Label className="text-[#0A0908]">Demo URL</Label>
               <Input
-                value={editingProject.demo_url || ''}
-                onChange={(e) => setEditingProject({ ...editingProject, demo_url: e.target.value })}
+                value={editingProject.demo_url || ""}
+                onChange={(e) =>
+                  setEditingProject({
+                    ...editingProject,
+                    demo_url: e.target.value,
+                  })
+                }
                 className="bg-white border-gray-300 text-[#0A0908]"
               />
             </div>
@@ -257,33 +329,41 @@ function SortableProjectCard({ project, editingProject, onEdit, onDelete, onSave
             <Label className="text-[#0A0908]">Technologies</Label>
             <div className="flex flex-wrap gap-2 mb-2">
               {editingProject.tags.map((tag: string) => (
-                <Badge key={tag} variant="secondary" className="flex items-center gap-1 bg-[#FF6542] text-white hover:bg-[#FF6542]/90">
+                <Badge
+                  key={tag}
+                  variant="secondary"
+                  className="flex items-center gap-1 bg-[#FF6542] text-white hover:bg-[#FF6542]/90"
+                >
                   {tag}
                   <X
                     className="h-3 w-3 cursor-pointer"
-                    onClick={() => setEditingProject({
-                      ...editingProject,
-                      tags: editingProject.tags.filter((t: string) => t !== tag)
-                    })}
+                    onClick={() =>
+                      setEditingProject({
+                        ...editingProject,
+                        tags: editingProject.tags.filter(
+                          (t: string) => t !== tag,
+                        ),
+                      })
+                    }
                   />
                 </Badge>
               ))}
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full justify-start text-left font-normal border-gray-300 hover:border-[#FF6542] transition-colors"
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   Add technologies...
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent 
+              <DropdownMenuContent
                 className="w-80 bg-white border-gray-200 p-4 shadow-xl max-h-[400px] overflow-y-auto"
                 align="start"
               >
-                {skillCategories?.map((category: any, idx: number) => (
+                {skillCategories?.map((category, idx) => (
                   <div key={category.title}>
                     {idx > 0 && <DropdownMenuSeparator className="my-3" />}
                     <div className="mb-3">
@@ -292,26 +372,28 @@ function SortableProjectCard({ project, editingProject, onEdit, onDelete, onSave
                         {category.title}
                       </DropdownMenuLabel>
                       <div className="flex flex-wrap gap-2 mt-2">
-                        {category.skills.map((skill: any) => (
+                        {category.skills.map((skill) => (
                           <button
                             key={skill.name}
                             onClick={() => {
                               if (editingProject.tags.includes(skill.name)) {
                                 setEditingProject({
                                   ...editingProject,
-                                  tags: editingProject.tags.filter((t: string) => t !== skill.name)
+                                  tags: editingProject.tags.filter(
+                                    (t: string) => t !== skill.name,
+                                  ),
                                 });
                               } else {
                                 setEditingProject({
                                   ...editingProject,
-                                  tags: [...editingProject.tags, skill.name]
+                                  tags: [...editingProject.tags, skill.name],
                                 });
                               }
                             }}
                             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 ${
                               editingProject.tags.includes(skill.name)
-                                ? 'bg-[#FF6542] text-white shadow-md shadow-[#FF6542]/20'
-                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                ? "bg-[#FF6542] text-white shadow-md shadow-[#FF6542]/20"
+                                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                             }`}
                           >
                             {skill.name}
@@ -327,7 +409,9 @@ function SortableProjectCard({ project, editingProject, onEdit, onDelete, onSave
           <div className="flex items-center space-x-2">
             <Switch
               checked={editingProject.featured}
-              onCheckedChange={(checked) => setEditingProject({ ...editingProject, featured: checked })}
+              onCheckedChange={(checked) =>
+                setEditingProject({ ...editingProject, featured: checked })
+              }
             />
             <Label className="text-[#0A0908]">Featured Project</Label>
           </div>
@@ -354,35 +438,38 @@ const ProjectsEditor = () => {
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
-  useEffect(() => {
-    fetchProjects();
-  }, []);
-
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     try {
       const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .order('order_index');
+        .from("projects")
+        .select("*")
+        .order("order_index");
 
       if (error) throw error;
-      setProjects((data || []).map((p: any) => ({
-        ...p,
-        category: p.category || 'Professional',
-      })) as Project[]);
-    } catch (error: any) {
+      const projectRows = (data || []) as Partial<Project>[];
+      setProjects(
+        projectRows.map((p) => ({
+          ...p,
+          category: p.category || "Professional",
+        })) as Project[],
+      );
+    } catch (error: unknown) {
       toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
+        title: "Error",
+        description: getErrorMessage(error),
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -392,21 +479,21 @@ const ProjectsEditor = () => {
         const oldIndex = items.findIndex((i) => i.id === active.id);
         const newIndex = items.findIndex((i) => i.id === over.id);
         const newItems = arrayMove(items, oldIndex, newIndex);
-        
+
         // Update order_index for all items
         newItems.forEach(async (item, index) => {
           await supabase
-            .from('projects')
+            .from("projects")
             .update({ order_index: index + 1 })
-            .eq('id', item.id);
+            .eq("id", item.id);
         });
 
         return newItems;
       });
 
       toast({
-        title: 'Success',
-        description: 'Project order updated',
+        title: "Success",
+        description: "Project order updated",
       });
     }
   };
@@ -414,7 +501,7 @@ const ProjectsEditor = () => {
   const handleSave = async (project: Project) => {
     try {
       const { error } = await supabase
-        .from('projects')
+        .from("projects")
         .update({
           title: project.title,
           description: project.description,
@@ -426,74 +513,70 @@ const ProjectsEditor = () => {
           order_index: project.order_index,
           category: project.category,
         })
-        .eq('id', project.id);
+        .eq("id", project.id);
 
       if (error) throw error;
 
       toast({
-        title: 'Success',
-        description: 'Project updated successfully',
+        title: "Success",
+        description: "Project updated successfully",
       });
       setEditingProject(null);
       fetchProjects();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
+        title: "Error",
+        description: getErrorMessage(error),
+        variant: "destructive",
       });
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this project?')) return;
+    if (!confirm("Are you sure you want to delete this project?")) return;
 
     try {
-      const { error } = await supabase
-        .from('projects')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.from("projects").delete().eq("id", id);
 
       if (error) throw error;
 
       toast({
-        title: 'Success',
-        description: 'Project deleted successfully',
+        title: "Success",
+        description: "Project deleted successfully",
       });
       fetchProjects();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
+        title: "Error",
+        description: getErrorMessage(error),
+        variant: "destructive",
       });
     }
   };
 
   const handleAddNew = async () => {
     try {
-      await supabase
-        .from('projects')
-        .insert({
-          title: 'New Project',
-          description: 'Project description',
-          image_url: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=600&h=400&fit=crop',
-          tags: ['React'],
-          order_index: projects.length + 1,
-          featured: false,
-          category: 'Professional',
-        });
+      await supabase.from("projects").insert({
+        title: "New Project",
+        description: "Project description",
+        image_url:
+          "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=600&h=400&fit=crop",
+        tags: ["React"],
+        order_index: projects.length + 1,
+        featured: false,
+        category: "Professional",
+      });
 
       toast({
-        title: 'Success',
-        description: 'New project created',
+        title: "Success",
+        description: "New project created",
       });
       fetchProjects();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
+        title: "Error",
+        description: getErrorMessage(error),
+        variant: "destructive",
       });
     }
   };
@@ -510,8 +593,12 @@ const ProjectsEditor = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-[#0A0908]">Projects</h2>
-          <p className="text-sm text-gray-600 mt-1">Manage your portfolio projects - drag to reorder</p>
+          <h2 className="text-2xl font-semibold tracking-tight text-[#0A0908]">
+            Projects
+          </h2>
+          <p className="text-sm text-gray-600 mt-1">
+            Manage your portfolio projects - drag to reorder
+          </p>
         </div>
         <Button onClick={handleAddNew} size="default">
           <Plus className="mr-2 h-4 w-4" />
@@ -525,7 +612,7 @@ const ProjectsEditor = () => {
         onDragEnd={handleDragEnd}
       >
         <SortableContext
-          items={projects.map(p => p.id)}
+          items={projects.map((p) => p.id)}
           strategy={verticalListSortingStrategy}
         >
           {projects.map((project) => (
@@ -533,7 +620,9 @@ const ProjectsEditor = () => {
               key={project.id}
               project={project}
               editingProject={editingProject}
-              onEdit={(p: Project) => setEditingProject(editingProject?.id === p.id ? null : p)}
+              onEdit={(p: Project) =>
+                setEditingProject(editingProject?.id === p.id ? null : p)
+              }
               onDelete={handleDelete}
               onSave={handleSave}
               setEditingProject={setEditingProject}

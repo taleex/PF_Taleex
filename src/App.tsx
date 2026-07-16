@@ -67,9 +67,7 @@ const AppContent = () => {
   const location = useLocation();
 
   const isAdminRoute =
-    location.pathname === "/admin" ||
-    location.pathname === "/auth" ||
-    location.pathname.match(/^\/(?!$|projects$).*/);
+    location.pathname.startsWith("/admin") || location.pathname === "/auth";
 
   return (
     <SidebarProvider defaultOpen={false}>
@@ -95,7 +93,7 @@ const AppContent = () => {
             />
             <Route path="/auth" element={<Auth />} />
             <Route
-              path="/admin"
+              path="/admin/*"
               element={
                 <ProtectedRoute>
                   <Admin />
