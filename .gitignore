@@ -28,3 +28,6 @@ dist-ssr
 
 # Security Audit Documents
 docs/Security-Audit*
+
+# Supabase CLI local state
+supabase/.temp

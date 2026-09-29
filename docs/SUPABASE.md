@@ -59,14 +59,17 @@ These already exist in the remote database, so mark them as applied **without
 re-running them**:
 
 ```bash
-npx supabase@latest migration repair --status applied \
+npx supabase@latest migration list --linked
+
+npx supabase@latest migration repair --status applied --linked \
   20251002114321 20251002143047 20251002144004 20251003183633 20251003192303
 ```
 
-### 3. Push the new migrations
+### 3. Preview, then push the new migrations
 
 ```bash
-npx supabase@latest db push
+npx supabase@latest db push --dry-run --linked   # should list only the 20260929* files
+npx supabase@latest db push --linked
 ```
 
 This applies the five `20260929*` migrations (content schema, seeds, draft +
@@ -76,10 +79,14 @@ safe.
 ### 4. Confirm
 
 ```bash
-npx supabase@latest migration list
+npx supabase@latest migration list --linked
 ```
 
 All ten migrations should show as applied locally **and** remotely.
+
+> These commands prompt for your database password. To skip the prompt, append
+> `-p "<database-password>"`. The CLI stores its local state in
+> `supabase/.temp/`, which is gitignored.
 
 ---
 
