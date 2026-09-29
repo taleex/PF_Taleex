@@ -113,7 +113,9 @@ supabase/
    - Set `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, and `VITE_SUPABASE_PROJECT_ID`
 
 4. **Run database migrations**
-   - Apply the checked-in migrations to the Supabase project. Existing table foundations are expected to be present in that project.
+   - See [`docs/SUPABASE.md`](docs/SUPABASE.md) for the full procedure.
+   - Fastest path: paste `supabase/manual/portfolio_content_backend.sql` into the Supabase SQL Editor and run it.
+   - CLI path: `supabase link`, then baseline the five pre-existing migrations with `supabase migration repair --status applied …`, then `supabase db push`.
 
 5. **Start the development server**
 
