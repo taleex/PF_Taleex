@@ -1,17 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { contactInfo, socialLinks } from "@/data/contact";
 import * as LucideIcons from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { CLOUD_ENABLED } from "@/config/cloud";
 import type { Database } from "@/integrations/supabase/types";
-import type { IconType } from "react-icons";
-
-interface ContactInfoRow {
-  label: string;
-  value: string;
-  type: string | null;
-  link: string | null;
-  icon_name: string | null;
-}
 
 export const useContactInfo = () => {
   return useQuery({
@@ -26,34 +18,44 @@ export const useContactInfo = () => {
         .order("order_index");
       if (error) throw error;
 
-      const rows = (data ||
+      const allRows = (data ||
         []) as Database["public"]["Tables"]["contact_info"]["Row"][];
+      const rows = allRows.filter((item) => item.show_publicly);
 
       const social = rows
-        .filter((item): item is ContactInfoRow => item.type === "social")
+        .filter((item) => item.type === "social")
         .map((item) => ({
           icon:
-            (LucideIcons as Record<string, IconType>)[item.icon_name || ""] ||
-            LucideIcons.Mail,
+            (LucideIcons as unknown as Record<string, LucideIcon>)[
+              item.icon_name || ""
+            ] || LucideIcons.Mail,
           href: item.link || item.value,
           label: item.label,
         }));
 
-      const info = rows
-        .filter((item): item is ContactInfoRow => item.type === "contact")
-        .reduce((acc: Record<string, string>, item) => {
+      const contactRows = allRows.filter((item) => item.type === "contact");
+      const visibleContactRows = rows.filter((item) => item.type === "contact");
+      const info = visibleContactRows.reduce(
+        (acc: Record<string, string>, item) => {
           acc[String(item.label).toLowerCase()] = item.value;
           return acc;
-        }, {});
+        },
+        {},
+      );
 
       return {
-        socialLinks: social.length > 0 ? social : socialLinks,
+        socialLinks:
+          social.length > 0
+            ? social
+            : allRows.some((item) => item.type === "social")
+              ? []
+              : socialLinks,
         contactInfo:
-          Object.keys(info).length > 0
+          contactRows.length > 0
             ? {
-                email: info.email || contactInfo.email,
-                phone: info.phone || contactInfo.phone,
-                location: info.location || contactInfo.location,
+                email: info.email || "",
+                phone: info.phone || "",
+                location: info.location || "",
               }
             : contactInfo,
       };
