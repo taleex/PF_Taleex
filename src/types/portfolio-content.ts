@@ -26,7 +26,7 @@ const profileSchema = z
     experience_label: nullableText,
     tags: textArray,
     cv_url: nullableText,
-    open_to_remote: z.boolean(),
+    open_to_remote: z.boolean().optional(),
     timezone: nullableText,
     availability: nullableText,
   })
@@ -97,7 +97,7 @@ const contactInfoSchema = z
     icon: nullableText,
     icon_name: nullableText,
     order_index: nullableNumber,
-    show_publicly: z.boolean(),
+    show_publicly: z.boolean().optional(),
   })
   .strip();
 
@@ -170,20 +170,20 @@ export const portfolioSnapshotSchema = z
     exportedAt: z.string().datetime(),
     data: z
       .object({
-        profiles: z.array(profileSchema),
-        projects: z.array(projectSchema),
-        experiences: z.array(experienceSchema),
-        skill_categories: z.array(skillCategorySchema),
-        skills: z.array(skillSchema),
-        contact_info: z.array(contactInfoSchema),
-        page_sections: z.array(pageSectionSchema),
-        site_content: z.array(siteContentSchema),
-        site_images: z.array(siteImageSchema),
-        education: z.array(educationSchema),
-        courses: z.array(courseSchema),
-        languages: z.array(languageSchema),
+        profiles: z.array(profileSchema).default([]),
+        projects: z.array(projectSchema).default([]),
+        experiences: z.array(experienceSchema).default([]),
+        skill_categories: z.array(skillCategorySchema).default([]),
+        skills: z.array(skillSchema).default([]),
+        contact_info: z.array(contactInfoSchema).default([]),
+        page_sections: z.array(pageSectionSchema).default([]),
+        site_content: z.array(siteContentSchema).default([]),
+        site_images: z.array(siteImageSchema).default([]),
+        education: z.array(educationSchema).default([]),
+        courses: z.array(courseSchema).default([]),
+        languages: z.array(languageSchema).default([]),
       })
-      .strict(),
+      .strip(),
   })
   .strict()
   .superRefine((snapshot, context) => {

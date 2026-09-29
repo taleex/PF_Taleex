@@ -18,9 +18,8 @@ export const useContactInfo = () => {
         .order("order_index");
       if (error) throw error;
 
-      const allRows = (data ||
+      const rows = (data ||
         []) as Database["public"]["Tables"]["contact_info"]["Row"][];
-      const rows = allRows.filter((item) => item.show_publicly);
 
       const social = rows
         .filter((item) => item.type === "social")
@@ -33,29 +32,24 @@ export const useContactInfo = () => {
           label: item.label,
         }));
 
-      const contactRows = allRows.filter((item) => item.type === "contact");
-      const visibleContactRows = rows.filter((item) => item.type === "contact");
-      const info = visibleContactRows.reduce(
-        (acc: Record<string, string>, item) => {
-          acc[String(item.label).toLowerCase()] = item.value;
-          return acc;
-        },
-        {},
-      );
+      const info = rows
+        .filter((item) => item.type === "contact")
+        .reduce(
+          (acc: Record<string, string>, item) => {
+            acc[String(item.label).toLowerCase()] = item.value;
+            return acc;
+          },
+          {},
+        );
 
       return {
-        socialLinks:
-          social.length > 0
-            ? social
-            : allRows.some((item) => item.type === "social")
-              ? []
-              : socialLinks,
+        socialLinks: social.length > 0 ? social : socialLinks,
         contactInfo:
-          contactRows.length > 0
+          Object.keys(info).length > 0
             ? {
-                email: info.email || "",
-                phone: info.phone || "",
-                location: info.location || "",
+                email: info.email || contactInfo.email,
+                phone: info.phone || contactInfo.phone,
+                location: info.location || contactInfo.location,
               }
             : contactInfo,
       };

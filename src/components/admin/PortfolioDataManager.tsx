@@ -61,6 +61,29 @@ const resultCounts = (value: Json | null): Record<string, number> => {
   );
 };
 
+const errorCode = (error: unknown): string =>
+  typeof error === "object" && error !== null && "code" in error
+    ? String((error as { code?: unknown }).code ?? "")
+    : "";
+
+const errorMessage = (error: unknown): string =>
+  typeof error === "object" && error !== null && "message" in error
+    ? String((error as { message?: unknown }).message ?? "")
+    : "";
+
+const isMissingTable = (error: unknown): boolean =>
+  errorCode(error) === "PGRST205" ||
+  errorMessage(error).includes("Could not find the table");
+
+const isMissingFunction = (error: unknown): boolean =>
+  errorCode(error) === "PGRST202" ||
+  errorMessage(error).includes("Could not find the function");
+
+const snapshotCounts = (
+  data: PortfolioSnapshot["data"],
+): Record<string, number> =>
+  Object.fromEntries(TABLE_NAMES.map((table) => [table, data[table].length]));
+
 const PortfolioDataManager = () => {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -78,7 +101,11 @@ const PortfolioDataManager = () => {
         .select("payload,updated_at,published_at,publish_result")
         .eq("id", CURRENT_DRAFT_ID)
         .maybeSingle();
-      if (error) throw error;
+      if (error) {
+        // The draft table is optional; skip quietly until it is deployed.
+        if (isMissingTable(error)) return;
+        throw error;
+      }
       if (!data) return;
 
       const savedSnapshot = validateSnapshot(data.payload);
@@ -155,11 +182,18 @@ const PortfolioDataManager = () => {
   const exportSnapshot = async () => {
     setBusy(true);
     try {
+      const missingTables: string[] = [];
       const entries = await Promise.all(
         TABLE_NAMES.map(async (table) => {
           const { data, error } = await supabase.from(table).select("*");
-          if (error)
+          if (error) {
+            // Tables not deployed yet are exported as empty instead of failing.
+            if (isMissingTable(error)) {
+              missingTables.push(table);
+              return [table, []] as const;
+            }
             throw new Error(`Could not export ${table}: ${error.message}`);
+          }
           return [table, data ?? []] as const;
         }),
       );
@@ -179,7 +213,9 @@ const PortfolioDataManager = () => {
       URL.revokeObjectURL(url);
       toast({
         title: "Export complete",
-        description: "Live database content was exported.",
+        description: missingTables.length
+          ? `Live content exported. Not present in the database yet: ${missingTables.join(", ")}.`
+          : "Live database content was exported.",
       });
     } catch (error: unknown) {
       toast({
@@ -220,14 +256,35 @@ const PortfolioDataManager = () => {
       const { data, error } = await supabase.rpc("save_portfolio_draft", {
         payload: parsed as unknown as Json,
       });
-      if (error) throw error;
+
+      const updatedAt = new Date().toISOString();
+
+      if (error) {
+        if (!isMissingFunction(error)) throw error;
+
+        // Draft objects are not deployed yet: keep the validated snapshot in
+        // this browser session so it can still be applied with Publish.
+        const localCounts = snapshotCounts(parsed.data);
+        const localTotal = Object.values(localCounts).reduce(
+          (sum, count) => sum + count,
+          0,
+        );
+        setSnapshot(parsed);
+        setHasDraft(true);
+        setDraftUpdatedAt(updatedAt);
+        setImportResult({ kind: "staged", affectedRows: localCounts });
+        toast({
+          title: "Draft staged in this session",
+          description: `${localTotal} rows held in the browser until you publish.`,
+        });
+        return;
+      }
 
       const countsByTable = resultCounts(data);
       const stagedTotal = Object.values(countsByTable).reduce(
         (sum, count) => sum + count,
         0,
       );
-      const updatedAt = new Date().toISOString();
       setSnapshot(parsed);
       setHasDraft(true);
       setDraftUpdatedAt(updatedAt);
@@ -247,6 +304,33 @@ const PortfolioDataManager = () => {
     }
   };
 
+  const applySnapshotDirect = async (draft: PortfolioSnapshot) => {
+    const counts: Record<string, number> = {};
+    const skipped: string[] = [];
+
+    for (const table of TABLE_NAMES) {
+      const rows = draft.data[table];
+      if (rows.length === 0) {
+        counts[table] = 0;
+        continue;
+      }
+
+      const { error } = await supabase
+        .from(table)
+        .upsert(rows as never, { onConflict: "id" });
+      if (error) {
+        if (isMissingTable(error)) {
+          skipped.push(table);
+          continue;
+        }
+        throw error;
+      }
+      counts[table] = rows.length;
+    }
+
+    return { counts, skipped };
+  };
+
   const publishDraft = async () => {
     if (
       !window.confirm(
@@ -257,10 +341,25 @@ const PortfolioDataManager = () => {
 
     setBusy(true);
     try {
-      const { data, error } = await supabase.rpc("publish_portfolio_draft", {});
-      if (error) throw error;
+      let countsByTable: Record<string, number>;
+      let skippedTables: string[] = [];
 
-      const countsByTable = resultCounts(data);
+      const { data, error } = await supabase.rpc("publish_portfolio_draft", {});
+      if (!error) {
+        countsByTable = resultCounts(data);
+      } else if (isMissingFunction(error)) {
+        if (!snapshot) {
+          throw new Error(
+            "No staged snapshot is available in this session. Load the JSON again and save the draft.",
+          );
+        }
+        const applied = await applySnapshotDirect(snapshot);
+        countsByTable = applied.counts;
+        skippedTables = applied.skipped;
+      } else {
+        throw error;
+      }
+
       const publishedTotal = Object.values(countsByTable).reduce(
         (sum, count) => sum + count,
         0,
@@ -270,7 +369,11 @@ const PortfolioDataManager = () => {
       setImportResult({ kind: "published", affectedRows: countsByTable });
       toast({
         title: "Portfolio published",
-        description: `${publishedTotal} live rows upserted across ${Object.keys(countsByTable).length} tables.`,
+        description:
+          `${publishedTotal} live rows upserted across ${Object.keys(countsByTable).length} tables.` +
+          (skippedTables.length
+            ? ` Skipped tables not present in the database: ${skippedTables.join(", ")}.`
+            : ""),
       });
     } catch (error: unknown) {
       toast({
@@ -411,10 +514,10 @@ const PortfolioDataManager = () => {
 
           <div className="flex flex-col gap-3 border-t border-gray-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="max-w-2xl text-sm text-gray-600">
-              Imports are validated with Zod and saved to a private draft. Only
-              the explicit Publish action writes to live tables. Omitted rows
-              remain unchanged. Messages, user roles, and uploaded files are
-              excluded.
+              Imports are validated with Zod, then only the explicit Publish
+              action writes to the live tables. Omitted rows remain unchanged.
+              Tables that are not present in the database yet are skipped and
+              listed. Messages, user roles, and uploaded files are excluded.
             </p>
             <div className="flex gap-2">
               <Button
