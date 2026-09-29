@@ -195,10 +195,6 @@ const ExperiencesEditor = () => {
     }),
   );
 
-  useEffect(() => {
-    fetchExperiences();
-  }, [fetchExperiences]);
-
   const fetchExperiences = useCallback(async () => {
     try {
       const { data, error } = await supabase
@@ -218,6 +214,10 @@ const ExperiencesEditor = () => {
       setLoading(false);
     }
   }, [toast]);
+
+  useEffect(() => {
+    fetchExperiences();
+  }, [fetchExperiences]);
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;

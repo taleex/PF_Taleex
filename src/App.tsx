@@ -57,7 +57,7 @@ const queryClient = new QueryClient({
       gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
       refetchOnWindowFocus: false, // Don't refetch when window regains focus
       refetchOnReconnect: false, // Don't refetch on reconnect
-      refetchOnMount: "stale", // Only refetch if data is stale
+      refetchOnMount: true, // Only refetch if data is stale
     },
   },
 });
