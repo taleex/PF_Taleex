@@ -90,6 +90,100 @@ All ten migrations should show as applied locally **and** remotely.
 
 ---
 
+## Troubleshooting: `Connection timed out`
+
+### Symptom
+
+```
+Initialising login role...
+Connecting to remote database...
+failed to connect to postgres: failed to connect to
+`host=db.ooefpodiqdupfpyqmaif.supabase.co user=cli_login_postgres database=postgres`:
+Connection timed out
+```
+
+### Cause
+
+Supabase's **direct** database host (`db.<ref>.supabase.co`) is **IPv6-only** —
+it publishes no `A` record:
+
+```bash
+getent ahosts db.ooefpodiqdupfpyqmaif.supabase.co
+# 2a05:d012:5aa:c902:bfea:9d0e:8bf3:3386 STREAM db.ooefpodiqdupfpyqmaif.supabase.co
+```
+
+If your network has no working IPv6 route (or a VPN is blackholing IPv6), every
+CLI `--linked` command times out. A ProtonVPN-style IPv6 leak-protection
+interface (`ipv6leakintrf0`) does exactly that.
+
+Diagnose:
+
+```bash
+ip -6 addr show scope global | grep -c inet6                                 # 0 = no IPv6
+ip -6 route show default
+curl -6 -s -m 6 -o /dev/null -w '%{http_code}\n' https://ipv6.google.com     # must print 200
+```
+
+### Fix 1 — use the IPv4 connection pooler (most reliable)
+
+The pooler host has `A` records, so it works on IPv4-only networks. The exact
+host is already cached by `supabase link`:
+
+```bash
+cat supabase/.temp/pooler-url
+# postgresql://postgres.ooefpodiqdupfpyqmaif@aws-1-eu-west-3.pooler.supabase.com:5432/postgres
+```
+
+Append the database password and pass the whole string via `--db-url`:
+
+```bash
+DBURL='postgresql://postgres.ooefpodiqdupfpyqmaif:PASSWORD@aws-1-eu-west-3.pooler.supabase.com:5432/postgres'
+
+npx supabase@latest migration repair --status applied --db-url "$DBURL" \
+  20251002114321 20251002143047 20251002144004 20251003183633 20251003192303
+
+npx supabase@latest db push --db-url "$DBURL"
+```
+
+Percent-encode a password containing `@ : / # ? &`:
+
+```bash
+python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" 'my#pass'
+```
+
+Use the **session** pooler (port `5432`). The transaction pooler (`6543`) cannot
+run migrations.
+
+### Fix 2 — repair IPv6
+
+- Disconnect the VPN (or disable its IPv6 leak protection), then retry `--linked`.
+- Or enable the **IPv4 add-on** for the project (Dashboard → Project Settings →
+  Add-ons) so `db.<ref>.supabase.co` gets a real IPv4 address.
+
+### Fix 3 — skip the CLI entirely
+
+Paste `supabase/manual/portfolio_content_backend.sql` into the
+[SQL Editor](https://supabase.com/dashboard/project/ooefpodiqdupfpyqmaif/sql/new).
+To keep the CLI history in sync afterwards, run this once in the same editor:
+
+```sql
+create schema if not exists supabase_migrations;
+create table if not exists supabase_migrations.schema_migrations (
+  version text not null primary key,
+  statements text[],
+  name text
+);
+insert into supabase_migrations.schema_migrations (version, name) values
+  ('20251002114321', 'bbb5f312-c184-4d54-a6d2-535fd50037dc'),
+  ('20251002143047', '73bf246f-0427-4b64-b1b1-2e2cd63beaaf'),
+  ('20251002144004', 'db6f0029-cd4b-4583-a20a-e59ce07646f8'),
+  ('20251003183633', '48467e97-ebda-4d77-93bd-aa747c7a8bd6'),
+  ('20251003192303', '89cf33f3-5f7a-4e4c-adbc-0c9db2cebd9c')
+on conflict (version) do nothing;
+```
+
+---
+
 ## Verify (SQL Editor)
 
 ```sql
