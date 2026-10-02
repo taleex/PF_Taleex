@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { loginSchema, LoginFormData } from "@/lib/auth-validation";
 import { useRateLimit } from "@/hooks/useRateLimit";
+import { getErrorMessage } from "@/lib/error-utils";
 
 const REMEMBERED_EMAIL_KEY = "rememberedEmail";
 const LOGIN_RATE_LIMIT_KEY = "loginAttempts";
@@ -14,6 +15,8 @@ export const useAuthForm = () => {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
   const [errors, setErrors] = useState<
     Partial<Record<keyof LoginFormData, string>>
   >({});
@@ -143,6 +146,52 @@ export const useAuthForm = () => {
     }
   };
 
+  const handleForgotPassword = async (targetEmail: string) => {
+    const trimmedEmail = targetEmail.trim();
+
+    if (!trimmedEmail) {
+      toast({
+        title: "Email required",
+        description: "Enter your account email to receive a reset link.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const parsedEmail = loginSchema.shape.email.safeParse(trimmedEmail);
+    if (!parsedEmail.success) {
+      const message = parsedEmail.error.errors[0]?.message ?? "Invalid email address";
+      toast({
+        title: "Invalid email",
+        description: message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setForgotPasswordLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+        redirectTo: `${window.location.origin}/auth`,
+      });
+      if (error) throw error;
+
+      setResetEmailSent(true);
+      toast({
+        title: "Reset link sent",
+        description: "If an account exists for that email, a password reset link is on its way.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
+
   return {
     email,
     setEmail,
@@ -153,6 +202,11 @@ export const useAuthForm = () => {
     loading,
     errors,
     handleLogin,
+    // Password recovery
+    handleForgotPassword,
+    forgotPasswordLoading,
+    resetEmailSent,
+    setResetEmailSent,
     // Rate limiting info
     isRateLimited: rateLimit.isLocked,
     rateLimitRemaining: rateLimit.maxAttempts - rateLimit.attempts,
