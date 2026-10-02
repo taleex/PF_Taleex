@@ -5,6 +5,11 @@ export const userProfile = {
   avatar: '/placeholder.svg',
   location: 'Lisbon, Portugal',
   experience: '3+ Years',
+  experienceLabel: '3+ Years',
+  openToRemote: false,
+  timezone: '',
+  availability: '',
+  cvUrl: null,
   email: 'matosjax@gmail.com',
   interests: 'Coffee & Code',
   tags: [

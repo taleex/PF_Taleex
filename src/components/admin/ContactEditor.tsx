@@ -5,6 +5,7 @@ import { getErrorMessage } from "@/lib/error-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Save } from "lucide-react";
@@ -15,6 +16,7 @@ interface ContactInfoItem {
   label: string;
   value: string;
   link: string | null;
+  show_publicly: boolean;
   icon_name: string | null;
   type: string;
   order_index: number;
@@ -67,6 +69,7 @@ const ContactEditor = () => {
         .from("contact_info")
         .update({
           label: item.label,
+          show_publicly: item.show_publicly,
           value: item.value,
           link: item.link,
           icon_name: item.icon_name,
@@ -165,6 +168,22 @@ const ContactEditor = () => {
                   className="bg-white border-gray-300 text-[#0A0908]"
                 />
               </div>
+              <div className="flex items-center gap-3">
+                <Switch
+                  id={`public-${item.id}`}
+                  checked={editingItems[item.id]?.show_publicly ?? false}
+                  onCheckedChange={(checked) =>
+                    setEditingItems({
+                      ...editingItems,
+                      [item.id]: {
+                        ...editingItems[item.id],
+                        show_publicly: checked,
+                      },
+                    })
+                  }
+                />
+                <Label htmlFor={`public-${item.id}`}>Show publicly</Label>
+              </div>
               <div className="md:col-span-3">
                 <Button onClick={() => handleSave(editingItems[item.id])}>
                   <Save className="mr-2 h-4 w-4" />
@@ -222,6 +241,22 @@ const ContactEditor = () => {
                   }
                   className="bg-white border-gray-300 text-[#0A0908]"
                 />
+              </div>
+              <div className="flex items-center gap-3">
+                <Switch
+                  id={`public-${item.id}`}
+                  checked={editingItems[item.id]?.show_publicly ?? false}
+                  onCheckedChange={(checked) =>
+                    setEditingItems({
+                      ...editingItems,
+                      [item.id]: {
+                        ...editingItems[item.id],
+                        show_publicly: checked,
+                      },
+                    })
+                  }
+                />
+                <Label htmlFor={`public-${item.id}`}>Show publicly</Label>
               </div>
               <div className="md:col-span-2">
                 <Button onClick={() => handleSave(editingItems[item.id])}>

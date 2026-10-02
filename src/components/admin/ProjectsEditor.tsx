@@ -61,14 +61,15 @@ interface Project {
   demo_url: string | null;
   featured: boolean;
   order_index: number;
-  category: "Personal" | "Professional" | "Open Source";
+  category: "Personal" | "Professional" | "Open Source" | "Course";
+  problem: string | null;
+  highlights: string[] | null;
+  what_i_would_improve: string | null;
 }
 
 interface SkillCategory {
-  id: string;
   title: string;
   skills: {
-    id: string;
     name: string;
   }[];
 }
@@ -238,7 +239,8 @@ function SortableProjectCard({
                   category: value as
                     | "Personal"
                     | "Professional"
-                    | "Open Source",
+                    | "Open Source"
+                    | "Course",
                 })
               }
             >
@@ -249,8 +251,57 @@ function SortableProjectCard({
                 <SelectItem value="Personal">Personal</SelectItem>
                 <SelectItem value="Professional">Professional</SelectItem>
                 <SelectItem value="Open Source">Open Source</SelectItem>
+                <SelectItem value="Course">Course</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-4 border-t border-gray-200 pt-4">
+            <div className="space-y-2">
+              <Label className="text-[#0A0908]">Problem (one sentence)</Label>
+              <Textarea
+                value={editingProject.problem || ""}
+                onChange={(e) =>
+                  setEditingProject({
+                    ...editingProject,
+                    problem: e.target.value || null,
+                  })
+                }
+                placeholder="TODO(me): Add the user problem this project addresses."
+                className="bg-white border-gray-300 text-[#0A0908]"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[#0A0908]">
+                Technical highlights (one per line)
+              </Label>
+              <Textarea
+                value={(editingProject.highlights || []).join("\n")}
+                onChange={(e) =>
+                  setEditingProject({
+                    ...editingProject,
+                    highlights: e.target.value.split("\n").filter(Boolean),
+                  })
+                }
+                placeholder="TODO(me): Add 2-3 verified technical decisions."
+                className="bg-white border-gray-300 text-[#0A0908]"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[#0A0908]">
+                What I would improve (one sentence)
+              </Label>
+              <Textarea
+                value={editingProject.what_i_would_improve || ""}
+                onChange={(e) =>
+                  setEditingProject({
+                    ...editingProject,
+                    what_i_would_improve: e.target.value || null,
+                  })
+                }
+                placeholder="TODO(me): Add one improvement based on the implementation."
+                className="bg-white border-gray-300 text-[#0A0908]"
+              />
+            </div>
           </div>
           <div className="space-y-2">
             <Label className="text-[#0A0908]">Description</Label>
@@ -305,7 +356,7 @@ function SortableProjectCard({
                 onChange={(e) =>
                   setEditingProject({
                     ...editingProject,
-                    github_url: e.target.value,
+                    github_url: e.target.value || null,
                   })
                 }
                 className="bg-white border-gray-300 text-[#0A0908]"
@@ -318,7 +369,7 @@ function SortableProjectCard({
                 onChange={(e) =>
                   setEditingProject({
                     ...editingProject,
-                    demo_url: e.target.value,
+                    demo_url: e.target.value || null,
                   })
                 }
                 className="bg-white border-gray-300 text-[#0A0908]"
@@ -512,6 +563,9 @@ const ProjectsEditor = () => {
           featured: project.featured,
           order_index: project.order_index,
           category: project.category,
+          problem: project.problem,
+          highlights: project.highlights,
+          what_i_would_improve: project.what_i_would_improve,
         })
         .eq("id", project.id);
 
@@ -565,6 +619,9 @@ const ProjectsEditor = () => {
         order_index: projects.length + 1,
         featured: false,
         category: "Professional",
+        problem: null,
+        highlights: [],
+        what_i_would_improve: null,
       });
 
       toast({
