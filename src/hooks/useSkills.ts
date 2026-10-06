@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { skillCategories } from "@/data/skills";
 import * as Icons from "react-icons/si";
-import { Code2 } from "lucide-react";
 import { CLOUD_ENABLED } from "@/config/cloud";
 import type { Database } from "@/integrations/supabase/types";
 import type { IconType } from "react-icons";
@@ -51,8 +50,7 @@ export const useSkills = () => {
           .map((skill) => ({
             name: skill.name,
             icon:
-              (skill.icon && (Icons as Record<string, IconType>)[skill.icon]) ||
-              (Code2 as unknown as IconType),
+              (Icons as Record<string, IconType>)[skill.icon] || Icons.SiReact,
             svg_url: skill.svg_url || undefined,
             svg_url_dark: skill.svg_url_dark || undefined,
           })),

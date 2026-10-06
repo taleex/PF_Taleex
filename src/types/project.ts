@@ -1,12 +1,12 @@
 export interface Project {
   title: string;
-  category: "Personal" | "Professional" | "Open Source" | "Course";
+  category: 'Personal' | 'Professional' | 'Open Source';
   description: string;
   image: string;
   technologies: string[];
-  github: string | null;
+  github: string;
   live?: string;
   featured: boolean;
 }
 
-export type ProjectCategory = "All" | Project["category"];
+export type ProjectCategory = 'All' | Project['category'];

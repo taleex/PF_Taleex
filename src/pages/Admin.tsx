@@ -12,10 +12,6 @@ import SkillsEditor from "@/components/admin/SkillsEditor";
 import ContactEditor from "@/components/admin/ContactEditor";
 import PageSectionsEditor from "@/components/admin/PageSectionsEditor";
 import MessagesViewer from "@/components/admin/MessagesViewer";
-import PortfolioDataManager from "@/components/admin/PortfolioDataManager";
-import EducationEditor from "@/components/admin/EducationEditor";
-import CoursesEditor from "@/components/admin/CoursesEditor";
-import LanguagesEditor from "@/components/admin/LanguagesEditor";
 
 const Admin = () => {
   const { signOut } = useAuth();
@@ -80,21 +76,15 @@ const Admin = () => {
           onValueChange={setActiveTab}
           className="space-y-6"
         >
-          <div className="max-w-full overflow-x-auto">
-            <TabsList className="inline-flex w-max">
-              <TabsTrigger value="profile">Profile</TabsTrigger>
-              <TabsTrigger value="projects">Projects</TabsTrigger>
-              <TabsTrigger value="experience">Experience</TabsTrigger>
-              <TabsTrigger value="skills">Skills</TabsTrigger>
-              <TabsTrigger value="contact">Contact</TabsTrigger>
-              <TabsTrigger value="sections">Page Sections</TabsTrigger>
-              <TabsTrigger value="messages">Messages</TabsTrigger>
-              <TabsTrigger value="data">Portfolio Data</TabsTrigger>
-              <TabsTrigger value="education">Education</TabsTrigger>
-              <TabsTrigger value="courses">Courses</TabsTrigger>
-              <TabsTrigger value="languages">Languages</TabsTrigger>
-            </TabsList>
-          </div>
+          <TabsList className="inline-flex">
+            <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="projects">Projects</TabsTrigger>
+            <TabsTrigger value="experience">Experience</TabsTrigger>
+            <TabsTrigger value="skills">Skills</TabsTrigger>
+            <TabsTrigger value="contact">Contact</TabsTrigger>
+            <TabsTrigger value="sections">Page Sections</TabsTrigger>
+            <TabsTrigger value="messages">Messages</TabsTrigger>
+          </TabsList>
 
           <TabsContent value="profile" className="mt-6">
             <ProfileEditor />
@@ -122,22 +112,6 @@ const Admin = () => {
 
           <TabsContent value="messages" className="mt-6">
             <MessagesViewer />
-          </TabsContent>
-
-          <TabsContent value="data" className="mt-6">
-            <PortfolioDataManager />
-          </TabsContent>
-
-          <TabsContent value="education" className="mt-6">
-            <EducationEditor />
-          </TabsContent>
-
-          <TabsContent value="courses" className="mt-6">
-            <CoursesEditor />
-          </TabsContent>
-
-          <TabsContent value="languages" className="mt-6">
-            <LanguagesEditor />
           </TabsContent>
         </Tabs>
       </main>

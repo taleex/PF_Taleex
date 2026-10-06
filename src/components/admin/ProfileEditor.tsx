@@ -25,11 +25,7 @@ interface Profile {
   location: string;
   email: string;
   interests: string;
-  experience_years: number | null;
-  experience_label: string;
-  open_to_remote: boolean;
-  timezone: string;
-  availability: string;
+  experience_years: number;
   tags: string[];
   cv_url: string;
 }
@@ -47,11 +43,7 @@ const ProfileEditor = () => {
     location: "",
     email: "",
     interests: "",
-    experience_years: null,
-    experience_label: "TODO(me): Add an accurate experience label.",
-    open_to_remote: true,
-    timezone: "Lisbon, WET/WEST",
-    availability: "TODO(me): Add start date or notice period.",
+    experience_years: 5,
     tags: [],
     cv_url: "",
   });
@@ -71,7 +63,7 @@ const ProfileEditor = () => {
           tags:
             profileData.tags && profileData.tags.length > 0
               ? profileData.tags
-              : ["Frontend Developer", "React", "Next.js", "TypeScript"],
+              : ["Full-Stack Developer", "React Enthusiast", "Problem Solver"],
         });
       }
     } catch (error: unknown) {
@@ -89,10 +81,7 @@ const ProfileEditor = () => {
     fetchProfile();
   }, [fetchProfile]);
 
-  const handleFieldChange = (
-    field: string,
-    value: string | number | boolean | null,
-  ) => {
+  const handleFieldChange = (field: string, value: string | number) => {
     setProfile({ ...profile, [field]: value });
   };
 
@@ -109,11 +98,7 @@ const ProfileEditor = () => {
           location: profile.location,
           email: profile.email,
           interests: profile.interests,
-          experience_years: null,
-          experience_label: profile.experience_label,
-          open_to_remote: profile.open_to_remote,
-          timezone: profile.timezone,
-          availability: profile.availability,
+          experience_years: profile.experience_years,
           tags: profile.tags,
           cv_url: profile.cv_url,
         })

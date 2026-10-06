@@ -15,4 +15,5 @@ Allow: /
 Disallow: /api/
 Disallow: /admin/
 
-Sitemap: https://taleex.netlify.app/sitemap.xml
+# Sitemap (atualize com o domínio do seu projeto)
+Sitemap: https://seu-dominio.com/sitemap.xml
