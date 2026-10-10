@@ -65,10 +65,10 @@ interface Project {
 }
 
 interface SkillCategory {
-  id: string;
+  id?: string;
   title: string;
   skills: {
-    id: string;
+    id?: string;
     name: string;
   }[];
 }

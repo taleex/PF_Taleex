@@ -13,6 +13,15 @@ interface RoleCache {
 // Global cache to prevent excessive database calls
 const roleCache = new Map<string, RoleCache>();
 
+export const clearRoleCache = () => roleCache.clear();
+
+// Drop cached roles whenever the session changes (sign-out, user switch)
+supabase.auth.onAuthStateChange((event) => {
+  if (event === 'SIGNED_OUT' || event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+    clearRoleCache();
+  }
+});
+
 export const useUserRole = () => {
   const { user, loading: authLoading } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);

@@ -102,12 +102,14 @@ const MessagesViewer = () => {
 
   const handleDeleteContact = async (id: string) => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("contact_submissions")
         .delete()
-        .eq("id", id);
+        .eq("id", id)
+        .select("id");
 
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error("Delete was blocked by database permissions");
 
       setContacts(contacts.filter((c) => c.id !== id));
       toast({
@@ -125,12 +127,14 @@ const MessagesViewer = () => {
 
   const handleDeleteFeedback = async (id: string) => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("feedback_messages")
         .delete()
-        .eq("id", id);
+        .eq("id", id)
+        .select("id");
 
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error("Delete was blocked by database permissions");
 
       setFeedbackMessages(feedbackMessages.filter((f) => f.id !== id));
       toast({

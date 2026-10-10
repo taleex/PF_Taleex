@@ -112,17 +112,6 @@ const FeedbackChat = ({
         text: botMessage1
       }]);
 
-      // Save first bot message
-      try {
-        const { supabase } = await import('@/integrations/supabase/client');
-        await supabase.from('feedback_messages').insert([{
-          message: botMessage1,
-          type: 'bot'
-        }]);
-      } catch (error) {
-        // Silently handle error - feedback still works locally
-      }
-
       setIsTyping(true);
       setTimeout(async () => {
         const botMessage2 = "Your input helps shape the future of Taleex. If you ever have more ideas or suggestions, don't hesitate to reach out! 🙌";
@@ -130,17 +119,6 @@ const FeedbackChat = ({
           type: 'bot',
           text: botMessage2
         }]);
-
-        // Save second bot message
-        try {
-          const { supabase } = await import('@/integrations/supabase/client');
-          await supabase.from('feedback_messages').insert([{
-            message: botMessage2,
-            type: 'bot'
-          }]);
-        } catch (error) {
-          // Silently handle error - feedback still works locally
-        }
 
         setIsTyping(false);
         setConversationStage(2);

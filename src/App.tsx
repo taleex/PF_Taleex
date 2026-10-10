@@ -42,14 +42,10 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: (failureCount, error: unknown) => {
-        const supabaseError = error as { code?: string; message?: string };
-        // Don't retry on Supabase errors
-        if (
-          supabaseError?.code === "PGRST" ||
-          supabaseError?.message?.includes("supabase")
-        ) {
-          return false;
-        }
+        const e = error as { code?: unknown; status?: unknown };
+        // Don't retry PostgREST/Postgres errors (they have a code) or 4xx responses
+        if (typeof e?.code === "string" && e.code.length > 0) return false;
+        if (typeof e?.status === "number" && e.status >= 400 && e.status < 500) return false;
         return failureCount < 3;
       },
       // Optimize caching to reduce unnecessary refetches
@@ -57,7 +53,7 @@ const queryClient = new QueryClient({
       gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
       refetchOnWindowFocus: false, // Don't refetch when window regains focus
       refetchOnReconnect: false, // Don't refetch on reconnect
-      refetchOnMount: "stale", // Only refetch if data is stale
+      refetchOnMount: true,
     },
   },
 });

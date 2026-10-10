@@ -6,6 +6,9 @@ import { getErrorMessage } from "@/lib/error-utils";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
+const ALLOWED_EXT = ["pdf", "doc", "docx"];
+const MAX_BYTES = 5 * 1024 * 1024;
+
 interface ProfileCVUploadProps {
   profileId: string;
   cvUrl: string;
@@ -21,15 +24,24 @@ export const ProfileCVUpload = ({
   const [uploading, setUploading] = useState(false);
 
   const handleUploadCV = async (file: File) => {
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+    if (!ALLOWED_EXT.includes(ext) || file.size > MAX_BYTES) {
+      toast({
+        title: "Invalid file",
+        description: "Upload a PDF, DOC or DOCX up to 5 MB.",
+        variant: "destructive",
+      });
+      return;
+    }
     setUploading(true);
     try {
-      const fileExt = file.name.split(".").pop();
+      const fileExt = ext;
       const fileName = `cv-${profileId}.${fileExt}`;
       const filePath = `${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from("documents")
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, file, { upsert: true, contentType: file.type || undefined, cacheControl: "60" });
 
       if (uploadError) throw uploadError;
 
@@ -37,7 +49,7 @@ export const ProfileCVUpload = ({
         data: { publicUrl },
       } = supabase.storage.from("documents").getPublicUrl(filePath);
 
-      onUploadSuccess(publicUrl);
+      onUploadSuccess(`${publicUrl}?v=${Date.now()}`);
 
       toast({
         title: "Success",

@@ -1,6 +1,14 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { getClientId, hitRateLimit } from "../_shared/rateLimit.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const CONTACT_EMAIL = Deno.env.get("CONTACT_EMAIL");
+const CONTACT_FROM = Deno.env.get("CONTACT_FROM") ?? "Portfolio Contact <onboarding@resend.dev>";
+
+const escapeHtml = (v: string) =>
+  v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+   .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,65 +23,8 @@ interface ContactEmailRequest {
   message: string;
 }
 
-// In-memory rate limiting (simple implementation)
-// For production, use Redis or database
-const submissionLimits = new Map<string, number[]>();
-const RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour
+const RATE_LIMIT_WINDOW_SECONDS = 60 * 60; // 1 hour
 const MAX_SUBMISSIONS_PER_HOUR = 5;
-
-/**
- * Get client identifier from request
- * Uses IP address as fallback if X-Forwarded-For not available
- */
-const getClientId = (req: Request): string => {
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) {
-    return forwarded.split(",")[0].trim();
-  }
-  // Fallback to a generic identifier if IP not available
-  return "unknown-client";
-};
-
-/**
- * Check if client has exceeded rate limit
- */
-const isRateLimited = (clientId: string): boolean => {
-  const now = Date.now();
-  const clientSubmissions = submissionLimits.get(clientId) || [];
-
-  // Remove old submissions outside the time window
-  const recentSubmissions = clientSubmissions.filter(
-    (timestamp) => now - timestamp < RATE_LIMIT_WINDOW
-  );
-
-  if (recentSubmissions.length >= MAX_SUBMISSIONS_PER_HOUR) {
-    return true;
-  }
-
-  // Update the map with recent submissions
-  if (recentSubmissions.length > 0) {
-    submissionLimits.set(clientId, recentSubmissions);
-  }
-
-  return false;
-};
-
-/**
- * Record submission for rate limiting
- */
-const recordSubmission = (clientId: string): void => {
-  const now = Date.now();
-  const clientSubmissions = submissionLimits.get(clientId) || [];
-  
-  // Remove old submissions outside the time window
-  const recentSubmissions = clientSubmissions.filter(
-    (timestamp) => now - timestamp < RATE_LIMIT_WINDOW
-  );
-
-  // Add current submission
-  recentSubmissions.push(now);
-  submissionLimits.set(clientId, recentSubmissions);
-};
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -85,17 +36,17 @@ const handler = async (req: Request): Promise<Response> => {
     const clientId = getClientId(req);
 
     // Check rate limit
-    if (isRateLimited(clientId)) {
+    if (!(await hitRateLimit("contact", clientId, MAX_SUBMISSIONS_PER_HOUR, RATE_LIMIT_WINDOW_SECONDS))) {
       return new Response(
         JSON.stringify({
           error: "Too many submissions. Please try again later.",
-          retryAfter: RATE_LIMIT_WINDOW / 1000,
+          retryAfter: RATE_LIMIT_WINDOW_SECONDS,
         }),
         {
           status: 429, // Too Many Requests
           headers: {
             "Content-Type": "application/json",
-            "Retry-After": String(Math.ceil(RATE_LIMIT_WINDOW / 1000)),
+            "Retry-After": String(RATE_LIMIT_WINDOW_SECONDS),
             ...corsHeaders,
           },
         }
@@ -106,7 +57,12 @@ const handler = async (req: Request): Promise<Response> => {
       await req.json();
 
     // Validate input
-    if (!name || !email || !subject || !message) {
+    if (
+      typeof name !== "string" || typeof email !== "string" ||
+      typeof subject !== "string" || typeof message !== "string" ||
+      !name.trim() || name.length > 100 || !EMAIL_RE.test(email) || email.length > 255 ||
+      !subject.trim() || subject.length > 200 || !message.trim() || message.length > 5000
+    ) {
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
         {
@@ -121,6 +77,9 @@ const handler = async (req: Request): Promise<Response> => {
     if (!RESEND_API_KEY) {
       throw new Error("RESEND_API_KEY is not configured");
     }
+    if (!CONTACT_EMAIL) {
+      throw new Error("CONTACT_EMAIL is not configured");
+    }
 
     // Send notification email to site owner using Resend API directly
     const emailResponse = await fetch("https://api.resend.com/emails", {
@@ -130,15 +89,16 @@ const handler = async (req: Request): Promise<Response> => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Portfolio Contact <onboarding@resend.dev>",
-        to: ["your-email@example.com"], // Replace with actual email
-        subject: `New Contact Form Submission: ${subject}`,
+        from: CONTACT_FROM,
+        reply_to: email,
+        to: [CONTACT_EMAIL],
+        subject: `New Contact Form Submission: ${subject.replace(/[\r\n]/g, " ")}`,
         html: `
           <h2>New Contact Form Submission</h2>
-          <p><strong>From:</strong> ${name} (${email})</p>
-          <p><strong>Subject:</strong> ${subject}</p>
+          <p><strong>From:</strong> ${escapeHtml(name)} (${escapeHtml(email)})</p>
+          <p><strong>Subject:</strong> ${escapeHtml(subject)}</p>
           <p><strong>Message:</strong></p>
-          <p>${message.replace(/\n/g, '<br>')}</p>
+          <p>${escapeHtml(message).replace(/\n/g, '<br>')}</p>
         `,
       }),
     });
@@ -147,9 +107,6 @@ const handler = async (req: Request): Promise<Response> => {
       const errorData = await emailResponse.text();
       throw new Error(`Resend API error: ${errorData}`);
     }
-
-    // Record successful submission for rate limiting
-    recordSubmission(clientId);
 
     const emailData = await emailResponse.json();
     console.log("Email sent successfully:", emailData);
@@ -161,10 +118,10 @@ const handler = async (req: Request): Promise<Response> => {
         ...corsHeaders,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error sending email:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: "Could not send notification" }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },

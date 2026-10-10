@@ -5,14 +5,6 @@ import { CLOUD_ENABLED } from "@/config/cloud";
 import type { Database } from "@/integrations/supabase/types";
 import type { IconType } from "react-icons";
 
-interface ContactInfoRow {
-  label: string;
-  value: string;
-  type: string | null;
-  link: string | null;
-  icon_name: string | null;
-}
-
 export const useContactInfo = () => {
   return useQuery({
     queryKey: ["contact-info"],
@@ -30,17 +22,17 @@ export const useContactInfo = () => {
         []) as Database["public"]["Tables"]["contact_info"]["Row"][];
 
       const social = rows
-        .filter((item): item is ContactInfoRow => item.type === "social")
+        .filter((item) => item.type === "social")
         .map((item) => ({
           icon:
-            (LucideIcons as Record<string, IconType>)[item.icon_name || ""] ||
+            (LucideIcons as unknown as Record<string, IconType>)[item.icon_name || ""] ||
             LucideIcons.Mail,
           href: item.link || item.value,
           label: item.label,
         }));
 
       const info = rows
-        .filter((item): item is ContactInfoRow => item.type === "contact")
+        .filter((item) => item.type === "contact")
         .reduce((acc: Record<string, string>, item) => {
           acc[String(item.label).toLowerCase()] = item.value;
           return acc;
